@@ -132,7 +132,13 @@ elif choix == '⚙️ Atelier Presse':
     df_att = pd.read_sql_query("SELECT p.id, c.nom, c.prenom, p.poids FROM production p JOIN clients c ON p.client_id = c.id WHERE p.statut = 'En attente'", conn)
     df_cuves = pd.read_sql_query("SELECT * FROM cuves", conn); conn.close()
     
-    # 1. Formulaire
+    # Affichage ticket si disponible
+    if st.session_state.ticket_data:
+        t = st.session_state.ticket_data
+        afficher_ticket(t['id'], t['nom'], t['poids'], t['huile'], t['cuve'], t['tarif'])
+        if st.button("❌ Fermer"): st.session_state.ticket_data = None; st.rerun()
+    
+    # Formulaire de saisie
     if not df_att.empty:
         with st.form("form_presse"):
             col1, col2 = st.columns(2)
@@ -142,8 +148,7 @@ elif choix == '⚙️ Atelier Presse':
             tarif_p = col2.number_input("Tarif Pressage (DA/kg)", value=8.0)
             
             if st.form_submit_button("✅ Finaliser & Imprimer Ticket"):
-                l_id = lot_sel.split(' - ')[0]
-                c_id = cuve_id.split(' ')[1]
+                l_id = lot_sel.split(' - ')[0]; c_id = cuve_id.split(' ')[1]
                 conn = get_connection(); c = conn.cursor()
                 c.execute('UPDATE production SET huile=?, cuve_id=?, statut=?, tarif=? WHERE id=?', (qte_h, c_id, 'Pressé', tarif_p, l_id))
                 c.execute('UPDATE cuves SET niveau_actuel = niveau_actuel + ? WHERE id=?', (qte_h, c_id))
@@ -152,13 +157,7 @@ elif choix == '⚙️ Atelier Presse':
                 st.session_state.ticket_data = {'id': l_id, 'nom': f"{inf[0]} {inf[1]}", 'poids': inf[2], 'huile': qte_h, 'cuve': f"Cuve {c_id}", 'tarif': tarif_p}
                 st.rerun()
 
-    # 2. Affichage ticket (SEULEMENT si des données existent)
-    if st.session_state.ticket_data:
-        t = st.session_state.ticket_data
-        afficher_ticket(t['id'], t['nom'], t['poids'], t['huile'], t['cuve'], t['tarif'])
-        if st.button("❌ Fermer"): 
-            st.session_state.ticket_data = None
-            st.rerun()
+
 elif choix == '📤 Sorties':
     st.header("📤 Bon de Sortie")
     conn = get_connection()
